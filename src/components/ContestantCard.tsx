@@ -5,10 +5,91 @@ import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '@/src/lib/supabase'
 import toast from 'react-hot-toast'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 export default function ContestCard({ contestant }: { contestant: any }) {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  const [scale, setScale] = useState(1)
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+
+  const minSwipeDistance = 50
+
+  useEffect(() => {
+    setScale(1)
+    setPosition({ x: 0, y: 0 })
+  }, [selectedIndex])
+
+  const toggleZoom = () => {
+    if (scale === 1) {
+      setScale(2)
+    } else {
+      setScale(1)
+      setPosition({ x: 0, y: 0 })
+    }
+  }
+  const handleMouseDown = () => {
+    if (scale > 1) setIsDragging(true)
+  }
+
+  const handleMouseUp = () => setIsDragging(false)
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return
+
+    setPosition((prev) => ({
+      x: prev.x + e.movementX,
+      y: prev.y + e.movementY,
+    }))
+  }
+  const [initialDistance, setInitialDistance] = useState<number | null>(null)
+
+  const getDistance = (touches: React.TouchList) => {
+    const dx = touches[0].clientX - touches[1].clientX
+    const dy = touches[0].clientY - touches[1].clientY
+    return Math.sqrt(dx * dx + dy * dy)
+  }
+
+  const handleTouchMoveZoom = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const distance = getDistance(e.touches)
+
+      if (initialDistance) {
+        const scaleChange = distance / initialDistance
+        setScale(Math.min(Math.max(1, scale * scaleChange), 4))
+      }
+
+      setInitialDistance(distance)
+    }
+  }
+
+  const handleTouchEndZoom = () => {
+    setInitialDistance(null)
+  }
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+
+    const distance = touchStart - touchEnd
+
+    if (distance > minSwipeDistance) {
+      nextImage() // swipe left → next
+    } else if (distance < -minSwipeDistance) {
+      prevImage() // swipe right → prev
+    }
+  }
 
   const vote = async () => {
     if (loading) return
@@ -53,26 +134,42 @@ export default function ContestCard({ contestant }: { contestant: any }) {
       setLoading(false)
     }
   }
+  const nextImage = () => {
+    if (selectedIndex === null) return
+    setSelectedIndex((prev) =>
+      prev === contestant.options.length - 1 ? 0 : (prev as number) + 1
+    )
+  }
+
+  const prevImage = () => {
+    if (selectedIndex === null) return
+    setSelectedIndex((prev) =>
+      prev === 0 ? contestant.options.length - 1 : (prev as number) - 1
+    )
+  }
 
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSelectedImage(null)
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedIndex(null)
+      if (e.key === 'ArrowRight') nextImage()
+      if (e.key === 'ArrowLeft') prevImage()
     }
 
-    window.addEventListener('keydown', handleEsc)
-    return () => window.removeEventListener('keydown', handleEsc)
-  }, [])
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [selectedIndex])
+
   return (
     <>
       <div
         className={`bg-gradient-to-br ${contestant.gradient} rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl sm:shadow-2xl`}
       >
         {/* IMAGE GRID */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 sm:p-4 h-60 rounded-2xl sm:rounded-3xl">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 sm:p-4 rounded-2xl sm:rounded-3xl">
           {contestant.options.map((image: string, i: number) => (
             <button
               key={i}
-              onClick={() => setSelectedImage(image)}
+              onClick={() => setSelectedIndex(i)}
               className="relative group overflow-hidden rounded-xl sm:rounded-2xl"
             >
               <Image
@@ -80,7 +177,7 @@ export default function ContestCard({ contestant }: { contestant: any }) {
                 alt={contestant.name}
                 width={500}
                 height={800}
-                className="object-cover h-32 sm:h-60 md:h-52 lg:h-60 w-full transition duration-300 group-hover:scale-105"
+                className="object-cover h-60 md:h-52 lg:h-60 w-full transition duration-300 group-hover:scale-105"
               />
 
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition" />
@@ -117,33 +214,68 @@ export default function ContestCard({ contestant }: { contestant: any }) {
       </div>
 
       {/* MODAL */}
-      {selectedImage && (
+      {selectedIndex !== null && (
         <div
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
-              setSelectedImage(null)
+              setSelectedIndex(null)
             }
           }}
         >
           {/* CLOSE BUTTON */}
           <button
-            onClick={() => setSelectedImage(null)}
-            className="absolute top-4 right-4 sm:top-5 sm:right-5 text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition"
+            onClick={() => setSelectedIndex(null)}
+            className="absolute top-4 right-4 text-white bg-white/10 hover:bg-white/20 p-2 rounded-full"
           >
             <X size={28} />
           </button>
 
-          {/* IMAGE */}
-          <div className="relative max-w-5xl w-full">
+
+          {/* LEFT ARROW */}
+          <button
+            onClick={prevImage}
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-50 text-white bg-black/50 hover:bg-black/70 p-3 rounded-full"
+          >
+            <ChevronLeft size={28} />
+          </button>
+
+          {/* RIGHT ARROW */}
+          <button
+            onClick={nextImage}
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-50 text-white bg-black/50 hover:bg-black/70 p-3 rounded-full"
+          >
+            <ChevronRight size={28} />
+          </button>
+
+
+          <div
+            className="relative max-w-5xl w-full overflow-hidden cursor-zoom-in"
+            onClick={toggleZoom}
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+            onMouseMove={handleMouseMove}
+            onTouchMove={handleTouchMoveZoom}
+            onTouchEnd={handleTouchEndZoom}
+          >
             <Image
-              src={selectedImage}
+              src={contestant.options[selectedIndex]}
               alt="Preview"
               width={1200}
               height={1200}
-              className="w-full h-auto max-h-[90vh] object-contain rounded-xl sm:rounded-2xl"
+              className="w-full h-auto max-h-[90vh] object-contain rounded-xl transition-transform duration-200"
+              style={{
+                transform: `scale(${scale}) translate(${position.x}px, ${position.y}px)`,
+                cursor: scale > 1 ? 'grab' : 'zoom-in',
+              }}
             />
+
+            {/* COUNTER */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white text-sm px-3 py-1 rounded-full">
+              {selectedIndex + 1} / {contestant.options.length}
+            </div>
           </div>
+
         </div>
       )}
     </>
