@@ -263,7 +263,11 @@ export default function ContestCard({ contestant }: { contestant: any }) {
 
           <div
             className="relative max-w-5xl w-full overflow-hidden cursor-zoom-in"
-            onClick={toggleZoom}
+
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleZoom()
+            }}
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
             onMouseMove={handleMouseMove}
