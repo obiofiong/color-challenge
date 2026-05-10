@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '@/src/lib/supabase'
+import toast from 'react-hot-toast'
 
 export default function ContestCard({ contestant }: { contestant: any }) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
@@ -15,31 +16,43 @@ export default function ContestCard({ contestant }: { contestant: any }) {
     const alreadyVoted = localStorage.getItem('voted')
 
     if (alreadyVoted) {
-      alert('You already voted!')
+      toast.error('You already voted!')
       return
     }
 
     try {
       setLoading(true)
 
-      const { error } = await supabase.from('votes').insert({
-        contestant: contestant.id,
+      const promise = supabase.from('votes').insert({
+        contestant_id: contestant.id,
+        contestant_name: contestant.name,
+        contestant_color: contestant.color,
       })
 
-      if (error) {
-        throw error
-      }
+      await toast.promise(
+        (async () => {
+          const { error } = await supabase.from('votes').insert({
+            contestant_id: contestant.id,
+            contestant_name: contestant.name,
+            contestant_color: contestant.color,
+          })
 
+          if (error) throw error
+        })(),
+        {
+          loading: 'Submitting vote...',
+          success: `You voted for ${contestant.name} 🎉`,
+          error: 'Something went wrong',
+        }
+      )
       localStorage.setItem('voted', 'true')
-      alert(`You voted for ${contestant.name}`)
-    } catch (err: any) {
+    } catch (err) {
       console.error(err)
-      alert('Something went wrong. Please try again.')
+      toast.error('Unexpected error occurred')
     } finally {
       setLoading(false)
     }
   }
-
   return (
     <>
       <div
