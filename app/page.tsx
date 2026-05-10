@@ -2,6 +2,7 @@ import ContestCard from '@/src/components/ContestantCard'
 import Countdown from '@/src/components/countdown'
 import { contestants as localContestants } from '@/src/lib/contestants'
 import { supabase } from '@/src/lib/supabase'
+import Link from 'next/link'
 
 export default async function Home() {
   const { data, error } = await supabase
@@ -24,8 +25,10 @@ export default async function Home() {
     )
 
     return {
+      ...dbContestant,
       ...local,
       id: dbContestant.id,
+      options: local?.options
     }
   })
 
@@ -80,6 +83,13 @@ export default async function Home() {
             contestant={contestant}
           />
         ))}
+      </div>
+
+      <div className='my-6 grid place-items-center'>
+
+        <Link href={'/register-for-future-events'} className="text-2xl font-bold mb-2 mx-auto text-white underline">
+          Join Future Events ✨
+        </Link>
       </div>
     </main>
   )

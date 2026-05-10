@@ -2,27 +2,33 @@
 
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '@/src/lib/supabase'
 import toast from 'react-hot-toast'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { capitalize } from '../lib/helper'
+import EventRegistrationModal from './EventRegistrationModal'
 
 export default function ContestCard({ contestant }: { contestant: any }) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
+  const [showRegistration, setShowRegistration] = useState(false)
+
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
+
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
 
-  const minSwipeDistance = 50
+  const [initialDistance, setInitialDistance] = useState<number | null>(null)
+  const handleMouseDown = () => {
+    if (scale > 1) setIsDragging(true)
+  }
 
   useEffect(() => {
     setScale(1)
     setPosition({ x: 0, y: 0 })
   }, [selectedIndex])
-
   const toggleZoom = () => {
     if (scale === 1) {
       setScale(2)
@@ -30,9 +36,6 @@ export default function ContestCard({ contestant }: { contestant: any }) {
       setScale(1)
       setPosition({ x: 0, y: 0 })
     }
-  }
-  const handleMouseDown = () => {
-    if (scale > 1) setIsDragging(true)
   }
 
   const handleMouseUp = () => setIsDragging(false)
@@ -45,8 +48,6 @@ export default function ContestCard({ contestant }: { contestant: any }) {
       y: prev.y + e.movementY,
     }))
   }
-  const [initialDistance, setInitialDistance] = useState<number | null>(null)
-
   const getDistance = (touches: React.TouchList) => {
     const dx = touches[0].clientX - touches[1].clientX
     const dy = touches[0].clientY - touches[1].clientY
@@ -70,62 +71,77 @@ export default function ContestCard({ contestant }: { contestant: any }) {
     setInitialDistance(null)
   }
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null)
-    setTouchStart(e.targetTouches[0].clientX)
+  const minSwipeDistance = 50
+
+  // ---------------- USER ID ----------------
+  function getUserId() {
+    let id = localStorage.getItem('user_id')
+    if (!id) {
+      id = crypto.randomUUID()
+      localStorage.setItem('user_id', id)
+    }
+    return id
   }
 
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX)
-  }
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return
-
-    const distance = touchStart - touchEnd
-
-    if (distance > minSwipeDistance) {
-      nextImage() // swipe left → next
-    } else if (distance < -minSwipeDistance) {
-      prevImage() // swipe right → prev
+  // ---------------- IP ----------------
+  async function getIP() {
+    try {
+      const res = await fetch('https://api.ipify.org?format=json')
+      const data = await res.json()
+      return data.ip
+    } catch {
+      return null
     }
   }
 
+  // ---------------- CHECK IF ALREADY VOTED ----------------
+  const hasVoted = async () => {
+    const userId = getUserId()
+
+    const { data } = await supabase
+      .from('votes')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    return !!data
+  }
+
+
+  // ---------------- VOTE ----------------
   const vote = async () => {
     if (loading) return
 
-    const alreadyVoted = localStorage.getItem('voted')
-
-    if (alreadyVoted) {
-      toast.error('You already voted!')
-      return
-    }
+    setLoading(true)
 
     try {
-      setLoading(true)
+      const alreadyVoted = await hasVoted()
 
-      const promise = supabase.from('votes').insert({
+      if (alreadyVoted) {
+        toast.error('You already voted!')
+        setLoading(false)
+        return
+      }
+
+      const userId = getUserId()
+      const ip = await getIP()
+      const userAgent = navigator.userAgent
+      const votePayload = {
         contestant_id: contestant.id,
         contestant_name: contestant.name,
         contestant_color: contestant.color,
-      })
+        user_id: userId,
+        ip_address: ip,
+        user_agent: userAgent,
+      }
 
-      await toast.promise(
-        (async () => {
-          const { error } = await supabase.from('votes').insert({
-            contestant_id: contestant.id,
-            contestant_name: contestant.name,
-            contestant_color: contestant.color,
-          })
+      const { error } = await supabase.from('votes').insert(votePayload)
 
-          if (error) throw error
-        })(),
-        {
-          loading: 'Submitting vote...',
-          success: `You voted for ${contestant.name} 🎉`,
-          error: 'Something went wrong',
-        }
-      )
+      if (error) throw error
+
+      toast.success(`You voted for ${contestant.color} 🎉`)
+      setShowRegistration(true)
+
       localStorage.setItem('voted', 'true')
     } catch (err) {
       console.error(err)
@@ -134,6 +150,8 @@ export default function ContestCard({ contestant }: { contestant: any }) {
       setLoading(false)
     }
   }
+
+  // ---------------- IMAGE NAV ----------------
   const nextImage = () => {
     if (selectedIndex === null) return
     setSelectedIndex((prev) =>
@@ -148,6 +166,7 @@ export default function ContestCard({ contestant }: { contestant: any }) {
     )
   }
 
+  // ---------------- KEYBOARD ----------------
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSelectedIndex(null)
@@ -161,51 +180,48 @@ export default function ContestCard({ contestant }: { contestant: any }) {
 
   return (
     <>
+      {/* CARD */}
       <div
-        className={`bg-gradient-to-br ${contestant.gradient} rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl sm:shadow-2xl`}
+        className={`bg-gradient-to-br ${contestant.gradient} rounded-2xl overflow-hidden shadow-xl`}
       >
         {/* IMAGE GRID */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 sm:p-4 rounded-2xl sm:rounded-3xl">
+        <div className="grid grid-cols-2 gap-2 p-3">
           {contestant.options.map((image: string, i: number) => (
             <button
               key={i}
               onClick={() => setSelectedIndex(i)}
-              className="relative group overflow-hidden rounded-xl sm:rounded-2xl"
+              className="overflow-hidden rounded-xl relative group"
             >
               <Image
                 src={image}
                 alt={contestant.name}
                 width={500}
-                height={800}
-                className="object-cover h-60 md:h-52 lg:h-60 w-full transition duration-300 group-hover:scale-105"
+                height={700}
+                className="object-cover h-56 w-full transition group-hover:scale-105"
               />
-
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition" />
             </button>
           ))}
         </div>
 
         {/* CONTENT */}
-        <div className={`p-4 sm:p-6 ${contestant.text}`}>
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">
-            {contestant.name}
-          </h2>
+        <div className={`p-5 ${contestant.text}`}>
+          <h2 className="text-2xl font-bold">{capitalize(contestant.color)}</h2>
 
-          <p className="text-sm sm:text-base mt-1 sm:mt-2 font-medium">
+          <p className="text-sm mt-1 font-medium">
             {contestant.tagline}
           </p>
 
-          <p className="opacity-90 mt-3 sm:mt-4 leading-relaxed text-sm sm:text-base">
+          <p className="text-sm mt-3 opacity-90">
             {contestant.description}
           </p>
 
           <button
             onClick={vote}
             disabled={loading}
-            className={`mt-4 sm:mt-6 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full text-sm sm:text-base font-semibold transition-all duration-300 w-full sm:w-auto
-              ${loading
-                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                : 'bg-white text-black hover:scale-105'
+            className={`mt-5 w-full py-3 rounded-full font-semibold transition ${loading
+              ? 'bg-gray-300 text-gray-600'
+              : 'bg-white text-black hover:scale-105'
               }`}
           >
             {loading ? 'Voting...' : 'Vote'}
@@ -216,28 +232,25 @@ export default function ContestCard({ contestant }: { contestant: any }) {
       {/* MODAL */}
       {selectedIndex !== null && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
           onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setSelectedIndex(null)
-            }
+            if (e.target === e.currentTarget) setSelectedIndex(null)
           }}
         >
-          {/* CLOSE BUTTON */}
+          {/* CLOSE */}
           <button
             onClick={() => setSelectedIndex(null)}
-            className="absolute top-4 right-4 text-white bg-white/10 hover:bg-white/20 p-2 rounded-full"
+            className="absolute top-4 right-4 text-white"
           >
             <X size={28} />
           </button>
-
 
           {/* LEFT ARROW */}
           <button
             onClick={prevImage}
             className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-50 text-white bg-black/50 hover:bg-black/70 p-3 rounded-full"
           >
-            <ChevronLeft size={28} />
+            <ChevronLeft size={30} />
           </button>
 
           {/* RIGHT ARROW */}
@@ -245,9 +258,8 @@ export default function ContestCard({ contestant }: { contestant: any }) {
             onClick={nextImage}
             className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-50 text-white bg-black/50 hover:bg-black/70 p-3 rounded-full"
           >
-            <ChevronRight size={28} />
+            <ChevronRight size={30} />
           </button>
-
 
           <div
             className="relative max-w-5xl w-full overflow-hidden cursor-zoom-in"
@@ -275,9 +287,13 @@ export default function ContestCard({ contestant }: { contestant: any }) {
               {selectedIndex + 1} / {contestant.options.length}
             </div>
           </div>
-
         </div>
       )}
+      <EventRegistrationModal
+        open={showRegistration}
+        onClose={() => setShowRegistration(false)}
+        contestant={contestant}
+      />
     </>
   )
 }

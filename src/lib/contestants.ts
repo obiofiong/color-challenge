@@ -1,7 +1,8 @@
 export const contestants = [
   {
     id: "black",
-    name: "BLACK",
+    color: "black",
+    // name: "BLACK",
     tagline: "Bold. Elegant. Timeless.",
     description:
       "A celebration of mystery, shadows, luxury, depth, and powerful storytelling through black-themed photography.",
@@ -11,7 +12,8 @@ export const contestants = [
   },
   {
     id: "red",
-    name: "RED",
+    color: "red",
+    // name: "RED",
     tagline: "Passion in Every Frame.",
     description:
       "A fiery collection capturing energy, love, intensity, confidence, and moments impossible to ignore.",
@@ -21,7 +23,8 @@ export const contestants = [
   },
   {
     id: "brown",
-    name: "BROWN",
+    color: "brown",
+    // name: "Victor",
     tagline: "Earthy. Rich. Authentic.",
     description:
       "A grounded collection inspired by wood, coffee, soil, architecture, fashion, and warm tones.",
@@ -31,7 +34,8 @@ export const contestants = [
   },
   {
     id: "green",
-    name: "GREEN",
+    color: "green",
+    // name: "John",
     tagline: "Nature Meets Creativity.",
     description:
       "From plants to city life, this collage series explores growth, freshness, life, and natural beauty.",
@@ -41,7 +45,8 @@ export const contestants = [
   },
   {
     id: "blue",
-    name: "BLUE",
+    color: "blue",
+    // name: "Joshua",
     tagline: "Cool. Calm. Creative.",
     description:
       "Photography inspired by the skies, oceans, calm moods, dreams, and peaceful everyday beauty.",
@@ -51,7 +56,8 @@ export const contestants = [
   },
   {
     id: "yellow",
-    name: "YELLOW",
+    color: "yellow",
+    // name: "Edwin",
     tagline: "Bright Moments Only.",
     description:
       "A vibrant showcase of happiness, sunshine, warmth, optimism, and unforgettable yellow scenes.",
@@ -61,7 +67,8 @@ export const contestants = [
   },
   {
     id: "pink",
-    name: "PINK",
+    color: "pink",
+    // name: "Victory",
     tagline: "Soft. Playful. Vibrant.",
     description:
       "An expressive collection blending fashion, lifestyle, creativity, personality, and energetic pink aesthetics.",
