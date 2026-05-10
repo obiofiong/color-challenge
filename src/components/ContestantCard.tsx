@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '@/src/lib/supabase'
 import toast from 'react-hot-toast'
@@ -53,13 +53,22 @@ export default function ContestCard({ contestant }: { contestant: any }) {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedImage(null)
+    }
+
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [])
   return (
     <>
       <div
         className={`bg-gradient-to-br ${contestant.gradient} rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl sm:shadow-2xl`}
       >
         {/* IMAGE GRID */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 sm:p-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 sm:p-4 h-60 rounded-2xl sm:rounded-3xl">
           {contestant.options.map((image: string, i: number) => (
             <button
               key={i}
@@ -70,8 +79,8 @@ export default function ContestCard({ contestant }: { contestant: any }) {
                 src={image}
                 alt={contestant.name}
                 width={500}
-                height={500}
-                className="object-cover h-32 sm:h-44 md:h-52 lg:h-60 w-full transition duration-300 group-hover:scale-105"
+                height={800}
+                className="object-cover h-32 sm:h-60 md:h-52 lg:h-60 w-full transition duration-300 group-hover:scale-105"
               />
 
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition" />
@@ -109,7 +118,14 @@ export default function ContestCard({ contestant }: { contestant: any }) {
 
       {/* MODAL */}
       {selectedImage && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setSelectedImage(null)
+            }
+          }}
+        >
           {/* CLOSE BUTTON */}
           <button
             onClick={() => setSelectedImage(null)}

@@ -1,4 +1,5 @@
 import ContestCard from '@/src/components/ContestantCard'
+import Countdown from '@/src/components/countdown'
 import { contestants as localContestants } from '@/src/lib/contestants'
 import { supabase } from '@/src/lib/supabase'
 
@@ -6,6 +7,12 @@ export default async function Home() {
   const { data, error } = await supabase
     .from('contestants')
     .select('*')
+
+  const { data: settings } = await supabase
+    .from('settings')
+    .select('voting_end')
+    .eq('id', 'global')
+    .single()
 
   if (error) {
     console.error(error)
@@ -37,6 +44,13 @@ export default async function Home() {
         <br /><br />
         Explore the designs and vote for your favorite.
       </p>
+
+      {/* COUNTDOWN FROM SUPABASE */}
+      {settings?.voting_end && (
+        <div className="max-w-md mx-auto bg-white/5 border border-white/10 rounded-2xl p-4 mb-10">
+          <Countdown targetDate={settings.voting_end} />
+        </div>
+      )}
 
       {/* RULES */}
       <div className="max-w-3xl mx-auto mb-12 bg-white/5 border border-white/10 rounded-2xl p-6 text-gray-200">
