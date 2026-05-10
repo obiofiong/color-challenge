@@ -240,7 +240,7 @@ export default function ContestCard({ contestant }: { contestant: any }) {
           {/* CLOSE */}
           <button
             onClick={() => setSelectedIndex(null)}
-            className="absolute top-4 right-4 text-white"
+            className="absolute z-50 top-4 right-4 text-white"
           >
             <X size={28} />
           </button>
