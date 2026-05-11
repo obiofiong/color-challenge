@@ -201,7 +201,7 @@ export default function RegisterPage() {
 
                 <textarea
                   rows={5}
-                  placeholder="Tell us the kind of creative events you would love to join..."
+                  placeholder="What are your interests?"
                   value={form.interests}
                   onChange={(e) =>
                     setForm({ ...form, interests: e.target.value })

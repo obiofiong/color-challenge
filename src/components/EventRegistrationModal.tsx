@@ -126,7 +126,7 @@ export default function EventRegistrationModal({
           />
 
           <textarea
-            placeholder="What kind of future events would you love to join?"
+            placeholder="What are your interests?"
             value={form.interests}
             onChange={(e) =>
               setForm({ ...form, interests: e.target.value })
