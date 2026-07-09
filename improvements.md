@@ -11,7 +11,7 @@ V2
 Sourced from ui-specification.md §6-8 (Known Issues / Notable Gaps / Suggested Focus Areas).
 
 - [x] Wire up event deletion — `deleteEvent` server action existed but had no button anywhere in the admin UI
-- [ ] Admin sidebar disappears entirely below `md` breakpoint with no mobile nav replacement
+- [x] Admin sidebar disappears entirely below `md` breakpoint with no mobile nav replacement
 - [ ] Apply-to-compete form does an extra client-side round trip to resolve `event_id` from `slug` before submitting
 - [ ] Dead unused `success-msg` div in `EventEditForm.tsx`
 - [ ] Public event page has no empty state when an event has zero contestants (silent blank gap)

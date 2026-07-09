@@ -14,9 +14,9 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex">
+    <div className="min-h-screen bg-zinc-950 text-white flex flex-col md:flex-row">
       <AdminNav email={user.email ?? ''} />
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto">
+      <main className="flex-1 p-4 sm:p-6 md:p-10 overflow-y-auto">
         {children}
       </main>
     </div>
