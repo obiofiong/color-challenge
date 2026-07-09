@@ -74,19 +74,9 @@ function ApplyForm({
   pending: boolean
 }) {
   return (
-    <form action={async (formData) => {
-      const supabase = (await import('@/src/lib/supabase-browser')).createSupabaseBrowserClient()
-      const { data: event } = await supabase
-        .from('events')
-        .select('id')
-        .eq('slug', slug)
-        .single()
+    <form action={formAction} className="space-y-4">
+      <input type="hidden" name="slug" value={slug} />
 
-      if (event) {
-        formData.set('event_id', event.id)
-      }
-      formAction(formData)
-    }} className="space-y-4">
       <div>
         <label className="text-sm text-gray-400 mb-2 block">Full Name *</label>
         <input

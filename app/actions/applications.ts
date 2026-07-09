@@ -8,7 +8,7 @@ export async function submitApplication(
   _prevState: { error: string | null; success: boolean },
   formData: FormData
 ) {
-  const event_id = formData.get('event_id') as string
+  const slug = formData.get('slug') as string
   const full_name = formData.get('full_name') as string
   const email = formData.get('email') as string
   const phone = formData.get('phone') as string
@@ -16,13 +16,24 @@ export async function submitApplication(
   const portfolio_url = formData.get('portfolio_url') as string
   const bio = formData.get('bio') as string
 
-  if (!full_name || !email || !event_id) {
+  if (!full_name || !email || !slug) {
     return { error: 'Name, email, and event are required', success: false }
   }
 
   const supabase = await createSupabaseServerClient()
+
+  const { data: event } = await supabase
+    .from('events')
+    .select('id')
+    .eq('slug', slug)
+    .single()
+
+  if (!event) {
+    return { error: 'Event not found', success: false }
+  }
+
   const { error } = await supabase.from('event_applications').insert({
-    event_id,
+    event_id: event.id,
     full_name,
     email,
     phone: phone || null,
