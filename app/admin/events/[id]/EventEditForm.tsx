@@ -21,12 +21,6 @@ export default function EventEditForm({ event }: { event: any }) {
         </div>
       )}
 
-      {state.error === null && (
-        <div className="bg-green-500/10 border border-green-500/20 text-green-400 text-sm rounded-xl px-4 py-3 mb-6 hidden" id="success-msg">
-          Event updated successfully
-        </div>
-      )}
-
       <form action={formAction} className="space-y-5">
         <input type="hidden" name="id" value={event.id} />
 
