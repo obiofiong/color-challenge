@@ -15,4 +15,4 @@ Sourced from ui-specification.md §6-8 (Known Issues / Notable Gaps / Suggested 
 - [x] Apply-to-compete form does an extra client-side round trip to resolve `event_id` from `slug` before submitting
 - [x] Dead unused `success-msg` div in `EventEditForm.tsx`
 - [x] Public event page has no empty state when an event has zero contestants (silent blank gap)
-- [ ] No persistent "already voted" indicator — voters only learn they've voted via a failed-revote error, not on page load
+- [x] No persistent "already voted" indicator — voters only learn they've voted via a failed-revote error, not on page load

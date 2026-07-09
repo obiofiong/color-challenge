@@ -12,13 +12,15 @@ import EventRegistrationModal from './EventRegistrationModal'
 export default function ContestCard({
   contestant,
   eventId,
+  initiallyVoted = false,
 }: {
   contestant: any
   eventId: string
+  initiallyVoted?: boolean
 }) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [showRegistration, setShowRegistration] = useState(false)
-  const [voted, setVoted] = useState(false)
+  const [voted, setVoted] = useState(initiallyVoted)
   const [isPending, startTransition] = useTransition()
 
   const [touchStart, setTouchStart] = useState<number | null>(null)

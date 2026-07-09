@@ -4,6 +4,20 @@ import { createSupabaseServerClient } from '@/src/lib/supabase-server'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 
+export async function getMyVote(eventId: string, userId: string) {
+  if (!userId) return null
+
+  const supabase = await createSupabaseServerClient()
+  const { data } = await supabase
+    .from('votes')
+    .select('contestant_id')
+    .eq('event_id', eventId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  return data?.contestant_id ?? null
+}
+
 export async function castVote(
   contestantId: string,
   contestantName: string,
