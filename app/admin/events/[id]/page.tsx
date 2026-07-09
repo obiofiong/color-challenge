@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import EventEditForm from './EventEditForm'
 import DeleteContestantButton from './DeleteContestantButton'
+import DeleteEventButton from './DeleteEventButton'
 
 export default async function AdminEventDetailPage({
   params,
@@ -98,6 +99,13 @@ export default async function AdminEventDetailPage({
             ))}
           </div>
         )}
+      </div>
+
+      <div className="mt-12 pt-8 border-t border-white/10">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          Danger Zone
+        </h2>
+        <DeleteEventButton eventId={id} eventTitle={event.title} />
       </div>
     </div>
   )
