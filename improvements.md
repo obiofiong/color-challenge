@@ -1,10 +1,10 @@
-V1
+V1 (all confirmed implemented)
 
-- In the contestant section of events, the votes shows zero
-- When deleting a contestant, pop up a dialog/modal to confirm delete
-- The 404 404 This page could not be found. should be redesigned better.
-- (UI) The home page should be more engaging, it currently looks bland.
-- The challenge picture could be a public image, like an unsplash image link
+- [x] In the contestant section of events, the votes shows zero — root cause was stale `contestant_id` references from before the multi-event migration plus a query bug (`contestants.order('created_at')` on a column that doesn't exist); fixed via SQL backfill + query fix
+- [x] When deleting a contestant, pop up a dialog/modal to confirm delete — `DeleteContestantButton.tsx`
+- [x] The 404 page should be redesigned better — `app/not-found.tsx`
+- [x] (UI) The home page should be more engaging, it currently looks bland — `app/page.tsx` hero/stats/card redesign
+- [x] The challenge picture could be a public image, like an unsplash image link — `images.unsplash.com` added to `next.config.ts` remote patterns
 
 V2
 
