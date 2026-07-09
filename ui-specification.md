@@ -32,7 +32,7 @@ Three user roles interact with the UI:
 - **Feedback:** Toasts via `react-hot-toast` (`<Toaster position="top-center">` mounted in root layout) for success/error on client-driven actions (voting, registration). Server-rendered forms (`useActionState`) instead show an inline red/green banner above the form — a second, different feedback pattern.
 - **Modals:** Two custom modal implementations exist (`EventRegistrationModal` and the new `DeleteContestantButton` confirm dialog), each independently coded (own overlay, close button, click-outside-to-close). No shared `<Modal>` primitive.
 - **Loading states:** Mostly implicit (Next.js server component suspense boundary / full page navigation). A couple of client components show inline "Loading contestant..." or "Uploading..." text. No skeleton screens or spinners as a system.
-- **Responsiveness:** Grids collapse `sm:`/`md:`/`xl:` breakpoints on public pages. The **admin sidebar is `hidden md:flex`** — on mobile there is currently no visible way to navigate between admin sections (see Known Issues).
+- **Responsiveness:** Grids collapse `sm:`/`md:`/`xl:` breakpoints on public pages. The admin area now has a `md:flex` desktop sidebar plus a `md:hidden` sticky top bar + slide-out drawer sharing the same nav links (fixed in V2 — see §9).
 
 ---
 
@@ -95,12 +95,12 @@ Three user roles interact with the UI:
 2. Event description (optional)
 3. Countdown block (optional, only if `voting_ends_at` set) — a small card wrapping a `<Countdown>` client component
 4. "Voting Rules" card — **static, hardcoded copy**, identical on every event regardless of event configuration (does not reflect the event's actual `max_votes_per_user`, `allow_public_voting`, etc.)
-5. Contestant grid (1/2/3 cols) — each cell is a `ContestantCard`
+5. `EventVotingSection` (client component) — wraps the contestant grid, plus (V2): a persistent "You voted for X" banner (looked up on mount via a `getMyVote` server action keyed by `event_id` + the anonymous `user_id`) and a bordered empty state ("No contestants yet — check back soon" + link to apply) when the event has zero contestants. Each grid cell is a `ContestantCard`, now initialized with `initiallyVoted` so a returning voter sees their card already in the "Voted" state without needing to re-click.
 6. Bottom link row: "View Leaderboard" · "Apply to Compete" · "Back to all events"
 
 **No header/hero differentiation** between events beyond title/description/countdown — visually this page looks structurally identical for every event.
 
-**States:** `notFound()` → Next.js default (now custom, see 4.9) if slug doesn't resolve. No explicit "no contestants yet" empty state on the public page (if `mappedContestants` is empty, the grid silently renders nothing — a blank gap between Voting Rules and the bottom links, no messaging).
+**States:** `notFound()` → custom 404 (see §4.9) if slug doesn't resolve. Empty-contestants and already-voted states now handled explicitly by `EventVotingSection` (V2 — previously both were silent/reactive-only, see §9).
 
 ---
 
@@ -110,7 +110,7 @@ Three user roles interact with the UI:
 This is the most feature-dense UI element in the app:
 - 2-column image thumbnail grid (if contestant has images) inside a gradient-colored card (gradient comes from DB per-contestant)
 - Name, tagline, description
-- **Vote button** — solid white pill, states: `Vote` → `Voting...` (pending, via `useTransition`) → `Voted` (disabled, gray). Calls `castVote` server action with a locally-generated anonymous `userId` (localStorage-based, see §6).
+- **Vote button** — solid white pill, states: `Vote` → `Voting...` (pending, via `useTransition`) → `Voted` (disabled, gray). Calls `castVote` server action with a locally-generated anonymous `userId` (localStorage-based, see §6). Accepts an `initiallyVoted` prop (V2) so the parent `EventVotingSection` can pre-seed this state from a server lookup instead of only setting it reactively after a vote attempt.
 - On successful vote: toast success message, `voted=true`, opens `EventRegistrationModal`, and also sets a **separate** `localStorage.voted` flag (redundant with per-event vote state — see Known Issues).
 - On duplicate-vote error: toast error, sets `voted=true` defensively.
 - **Fullscreen image viewer** (custom-built, not a library): clicking a thumbnail opens a fixed overlay with:
@@ -148,7 +148,7 @@ Simple list of all active/completed events → link into each one's leaderboard.
 Server component wrapping a client `useActionState` form (`submitApplication`).
 Fields: full name*, email*, phone, instagram, portfolio URL, bio. Submit button disables + relabels while pending.
 
-**Notable implementation detail:** on submit, the form first does a **client-side Supabase query** (dynamic import of the browser client) to resolve `event_id` from `slug`, injects it into the `FormData`, *then* calls the server action. This is an extra round-trip that could be avoided by resolving `event_id` server-side (the page already knows the slug at render time).
+`slug` is passed through as a hidden field and `submitApplication` resolves `event_id` server-side (V2 — previously did an extra client-side Supabase round trip via a dynamically imported browser client before calling the server action; see §9).
 
 Success state replaces the entire form with a centered checkmark + "Application Submitted!" message + link back to the event. No inline validation beyond native `required`/`type=email`; server-side error surfaces as a red banner above the form.
 
@@ -176,9 +176,7 @@ Centered single card, email + password, `useActionState(loginAction)`. Error ban
 
 ### 4.11 Admin: Layout & Navigation
 **Files:** `app/admin/layout.tsx`, `app/admin/AdminNav.tsx`
-Server layout checks session, redirects to `/login` if absent. Renders a fixed left sidebar (`w-64`, **hidden below `md` breakpoint**) with: Admin Panel title, logged-in email, 3 nav links (Dashboard / Events / Applications), Sign Out button pinned at bottom via flex.
-
-**No mobile nav equivalent** — under `md`, the sidebar is simply gone with no hamburger/drawer replacement, meaning admin is effectively unusable on a phone (see Known Issues).
+Server layout checks session, redirects to `/login` if absent. Renders a fixed left sidebar (`w-64`, `hidden md:flex`) with: Admin Panel title, logged-in email, 3 nav links (Dashboard / Events / Applications), Sign Out button pinned at bottom via flex. Below `md` (V2), a sticky top bar with a hamburger button opens a slide-out drawer sharing the same `NavLinks` + sign-out — the parent layout switches to `flex-col md:flex-row` so the bar stacks above `<main>` instead of squeezing into the row layout (previously the sidebar simply vanished with no replacement; see §9).
 
 Content area is a single unconstrained `<main>` — no breadcrumbs, no page-level consistent header/title treatment (each page defines its own `<h1>`), no shared "back" pattern (each nested page hand-writes its own `← Back to X` link).
 
@@ -207,8 +205,9 @@ This is effectively a raw database-field form with no grouping/sectioning (e.g.,
 ### 4.15 Admin: Edit Event (`/admin/events/[id]`)
 **Files:** `app/admin/events/[id]/page.tsx` (server, fetches event/contestants/votes) + `EventEditForm.tsx` (client form) + `DeleteContestantButton.tsx`
 Two distinct sections on one page:
-1. **Edit Event form** — superset of the create form's fields, plus `is_featured` checkbox (not present on create). A `hidden` "success" div exists in the JSX (`id="success-msg"`, class includes `hidden`) that appears to be dead/unused code — it's never toggled visible by any logic.
-2. **Contestants list** — header + "Add Contestant" button, then rows showing thumbnail (first image only), name, color, image count, vote count. Each row links to the contestant edit page; a trash icon opens the (recently added) confirm-delete modal.
+1. **Edit Event form** — superset of the create form's fields, plus `is_featured` checkbox (not present on create). The dead unused `success-msg` div (permanently `hidden`, never toggled) has been removed (V2 — see §9).
+2. **Contestants list** — header + "Add Contestant" button, then rows showing thumbnail (first image only), name, color, image count, vote count. Each row links to the contestant edit page; a trash icon opens the confirm-delete modal.
+3. **Danger Zone** (V2) — a `DeleteEventButton` (same confirm-modal pattern as the contestant delete) now exists at the bottom of this page, wiring up the previously-orphaned `deleteEvent` server action.
 
 No way to reorder contestants, no bulk actions, no duplicate/clone contestant.
 
@@ -243,7 +242,7 @@ Flat list of **all** applications across **all events** (no per-event filter, no
 4. Optionally click "View Leaderboard" → `/events/[slug]/leaderboard`
 5. Optionally return to `/` via "Back to all events"
 
-**Friction points:** no visible confirmation of *which* contestant was voted for persists on screen after voting (button just becomes "Voted" — the toast disappears); no way to see "you voted for X" if the user navigates away and back (state is derived from a failed-revote error message, not a proactive "already voted" banner on page load).
+**Friction points (V2 — resolved):** a returning voter now sees a persistent "You voted for X" banner and their card is pre-seeded in the "Voted" state on load, via `EventVotingSection` + `getMyVote` (see §9). Remaining: the toast itself still disappears after a few seconds, and there's no cross-device consistency since eligibility is still gated by a localStorage-only identity (see §6).
 
 ### Journey B — Prospective contestant
 1. Discover an event (via `/` or a shared link) → `/events/[slug]` → "Apply to Compete" → `/events/[slug]/apply`
@@ -265,14 +264,13 @@ Flat list of **all** applications across **all events** (no per-event filter, no
 - **Anonymous identity:** `getUserId()` (`src/lib/user.ts`) stores a generated UUID in `localStorage` under a fixed key, used to scope one-vote-per-event server-side. This is the *only* identity mechanism for voters — clearing localStorage or switching browsers/devices resets vote eligibility. No mention of this limitation anywhere in the UI copy.
 - **Toasts vs. inline banners:** client-driven flows (voting, registration modal, standalone register page) use `react-hot-toast`; server-action-driven flows (`useActionState` forms — login, create/edit event, create/edit contestant, apply) use a hand-rolled red/green `<div>` banner above the form. Two different feedback idioms for what is conceptually the same "form submit result" pattern.
 - **Duplicated marketing copy/forms:** the "future events" interest form exists twice with separate implementations (`EventRegistrationModal` and `/register-for-future-events`), each independently handling the same Supabase insert + duplicate-email error.
-- **Two different confirm-dialog eras:** the newly added contestant-delete modal is bespoke; no other destructive action in the app (e.g., deleting an event — if that exists — isn't shown in this UI at all; there is in fact **no delete-event action/button anywhere in the admin UI**, only delete-contestant).
+- **Confirm-dialog pattern duplication:** `DeleteContestantButton` and `DeleteEventButton` (V2) are two independently-coded copies of the same overlay/modal/confirm-cancel structure rather than one shared `<ConfirmDialog>` — worth consolidating now that there are two instances instead of one.
 - **No shared design tokens/components file:** every button, card, input, and badge is restyled inline per-page with Tailwind utility strings, so visual drift (as catalogued in §2) has already occurred between the homepage, the register page, and the admin area.
 
 ---
 
 ## 7. Notable Gaps / Absent Screens
 
-- No event **delete** UI (server action exists — `deleteEvent` — but is not wired to any button in `/admin/events` or `/admin/events/[id]`).
 - No **search/filter** anywhere (event list, applications list, admin events list are all unpaginated flat lists).
 - No **applicant-facing** status page (an applicant cannot check whether they were approved/rejected without being told out-of-band).
 - No **admin user management** (single implicit admin identity via Supabase Auth user; no roles/invite flow).
@@ -284,9 +282,28 @@ Flat list of **all** applications across **all events** (no per-event filter, no
 ## 8. Suggested Focus Areas for Review
 
 For an AI/design review consuming this document, the highest-leverage structural questions are likely:
-1. Should there be a shared component library (`Button`, `Card`, `Modal`, `Badge`, `FormField`) to eliminate the inline-Tailwind drift cataloged in §2 and §6?
-2. Should the admin sidebar have a mobile equivalent (drawer/bottom-nav), given it currently disappears entirely under `md`?
+1. Should there be a shared component library (`Button`, `Card`, `Modal`, `Badge`, `FormField`) to eliminate the inline-Tailwind drift cataloged in §2 and §6 — now including a shared `<ConfirmDialog>` to de-duplicate `DeleteContestantButton`/`DeleteEventButton`?
+2. ~~Should the admin sidebar have a mobile equivalent?~~ **Done in V2** — see §9. Remaining question: should the admin content area also gain breadcrumbs / a consistent page-header pattern, since each nested page still hand-writes its own `← Back to X` link?
 3. Is the gradient/text-color-as-raw-Tailwind-classes content model appropriate for a non-developer admin, or should it be a color picker mapped to a curated palette?
 4. Should voter identity move beyond `localStorage` (e.g., magic-link/email-based) given it directly gates the core "one vote per event" business rule?
 5. Should the "Apply to Compete" flow include applicant-facing status visibility, and should event creation support cloning/importing contestants to reduce the fully-serial admin journey in §5C?
 6. Should toasts and inline banners be unified into one feedback pattern?
+
+---
+
+## 9. Changelog
+
+### V2 (this pass)
+- Wired up `deleteEvent` to a new `DeleteEventButton` (Danger Zone section on the edit-event page) — the action existed but had no UI.
+- Added mobile navigation for `/admin/*`: sticky top bar + slide-out drawer below `md`, sharing nav links/sign-out with the desktop sidebar.
+- Removed the extra client-side Supabase round trip in the apply form — `event_id` is now resolved server-side from a hidden `slug` field inside `submitApplication`.
+- Removed the dead, permanently-hidden `success-msg` block from `EventEditForm.tsx`.
+- Added an explicit empty state ("No contestants yet") to the public event page instead of a silent blank gap.
+- Added a persistent "You voted for X" banner + pre-seeded "Voted" card state via a new `getMyVote` action and `EventVotingSection` wrapper, so returning voters no longer need to re-click Vote to discover they already have.
+
+### V1
+- Fixed vote counts showing zero (stale `contestant_id` references + a bad `.order('created_at', ...)` on a table without that column).
+- Replaced the native `confirm()` on contestant delete with a proper modal.
+- Redesigned the 404 page.
+- Redesigned the homepage (hero, stat row, richer event cards, empty states).
+- Added Unsplash support to the image remote patterns for event cover images.
