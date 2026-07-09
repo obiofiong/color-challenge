@@ -28,7 +28,8 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}
+      <body className="min-h-full flex flex-col">
+        {children}
         <div className="fixed bottom-4 right-4 bg-black/70 text-white text-xs px-3 py-2 rounded-full backdrop-blur">
           Built by{" "}
           <a
@@ -40,8 +41,8 @@ export default function RootLayout({
             John moon
           </a>
         </div>
+        <Toaster position="top-center" />
       </body>
-      <Toaster position="top-center" />
     </html>
   );
 }

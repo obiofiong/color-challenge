@@ -5,6 +5,7 @@ import { supabase } from '@/src/lib/supabase'
 import toast from 'react-hot-toast'
 import { Sparkles, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { getUserId } from '@/src/lib/user'
 
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
@@ -15,17 +16,6 @@ export default function RegisterPage() {
     phone: '',
     interests: '',
   })
-
-  function getUserId() {
-    let id = localStorage.getItem('user_id')
-
-    if (!id) {
-      id = crypto.randomUUID()
-      localStorage.setItem('user_id', id)
-    }
-
-    return id
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

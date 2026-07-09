@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { supabase } from '@/src/lib/supabase'
 import toast from 'react-hot-toast'
 import { X } from 'lucide-react'
+import { getUserId } from '../lib/user'
 
 export default function EventRegistrationModal({
   open,
@@ -15,24 +16,12 @@ export default function EventRegistrationModal({
   contestant: any
 }) {
   const [loading, setLoading] = useState(false)
-
   const [form, setForm] = useState({
     full_name: '',
     email: '',
     phone: '',
     interests: '',
   })
-
-  function getUserId() {
-    let id = localStorage.getItem('user_id')
-
-    if (!id) {
-      id = crypto.randomUUID()
-      localStorage.setItem('user_id', id)
-    }
-
-    return id
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,23 +39,14 @@ export default function EventRegistrationModal({
       if (error) throw error
 
       toast.success('Successfully registered for future events 🎉')
-
       onClose()
-
-      setForm({
-        full_name: '',
-        email: '',
-        phone: '',
-        interests: '',
-      })
+      setForm({ full_name: '', email: '', phone: '', interests: '' })
     } catch (err: any) {
-      if (err) {
-        if (err?.code === '23505') {
-          toast.error('This email has already been registered.')
-          return
-        }
-        toast.error('Failed to register')
+      if (err?.code === '23505') {
+        toast.error('This email has already been registered.')
+        return
       }
+      toast.error('Failed to register')
     } finally {
       setLoading(false)
     }
@@ -84,12 +64,10 @@ export default function EventRegistrationModal({
           <X />
         </button>
 
-        <h2 className="text-2xl font-bold mb-2">
-          Join Future Events ✨
-        </h2>
+        <h2 className="text-2xl font-bold mb-2">Join Future Events</h2>
         <p className="text-gray-400 mb-6 text-sm">
-          Thanks for voting for {contestant?.color}. Register to participate in
-          future colour challenges and other creative events.
+          Thanks for voting for {contestant?.name ?? contestant?.color}. Register to participate in
+          future challenges and other creative events.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -98,9 +76,7 @@ export default function EventRegistrationModal({
             type="text"
             placeholder="Full name"
             value={form.full_name}
-            onChange={(e) =>
-              setForm({ ...form, full_name: e.target.value })
-            }
+            onChange={(e) => setForm({ ...form, full_name: e.target.value })}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30"
           />
 
@@ -109,9 +85,7 @@ export default function EventRegistrationModal({
             type="email"
             placeholder="Email address"
             value={form.email}
-            onChange={(e) =>
-              setForm({ ...form, email: e.target.value })
-            }
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30"
           />
 
@@ -119,18 +93,14 @@ export default function EventRegistrationModal({
             type="text"
             placeholder="Phone number"
             value={form.phone}
-            onChange={(e) =>
-              setForm({ ...form, phone: e.target.value })
-            }
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30"
           />
 
           <textarea
             placeholder="What are your interests?"
             value={form.interests}
-            onChange={(e) =>
-              setForm({ ...form, interests: e.target.value })
-            }
+            onChange={(e) => setForm({ ...form, interests: e.target.value })}
             rows={4}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 resize-none"
           />
