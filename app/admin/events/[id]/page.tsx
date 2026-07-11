@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from '@/src/lib/supabase-server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, ExternalLink } from 'lucide-react'
 import EventEditForm from './EventEditForm'
 import DeleteContestantButton from './DeleteContestantButton'
 import DeleteEventButton from './DeleteEventButton'
@@ -39,13 +39,25 @@ export default async function AdminEventDetailPage({
 
   return (
     <div>
-      <Link
-        href="/admin/events"
-        className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition mb-6"
-      >
-        <ArrowLeft size={18} />
-        Back to events
-      </Link>
+      <div className="flex items-center justify-between mb-6">
+        <Link
+          href="/admin/events"
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition"
+        >
+          <ArrowLeft size={18} />
+          Back to events
+        </Link>
+
+        <Link
+          href={`/events/${event.slug}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition text-sm"
+        >
+          View live page
+          <ExternalLink size={16} />
+        </Link>
+      </div>
 
       <EventEditForm event={event} />
 
