@@ -25,3 +25,12 @@ Sourced from ui-specification.md §7-8 (remaining Notable Gaps / Suggested Focus
 - [x] `DeleteContestantButton` and `DeleteEventButton` are two independently-coded copies of the same confirm-modal structure
 - [x] No "View live page" link from the admin edit-event screen back to the public event
 - [x] No applicant-facing way to check application status after submitting
+
+V4
+
+Sourced from ui-specification.md §7 (remaining Notable Gaps after V3).
+
+- [ ] No search/filter on the admin applications list (flat list across all events, all statuses)
+- [ ] No search/filter on the admin events list
+- [ ] No contestant image reordering in admin (sort_order exists but there's no UI to change it after upload)
+- [ ] No onboarding guidance on the admin dashboard for a brand-new install with zero events

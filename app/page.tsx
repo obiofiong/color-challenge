@@ -128,11 +128,10 @@ export default async function Home() {
                         {new Date(event.starts_at).toLocaleDateString()}
                       </span>
                     )}
-                    <span className={`ml-auto px-2 py-0.5 rounded-full font-medium ${
-                      event.status === 'active'
+                    <span className={`ml-auto px-2 py-0.5 rounded-full font-medium ${event.status === 'active'
                         ? 'bg-green-500/20 text-green-400'
                         : 'bg-blue-500/20 text-blue-400'
-                    }`}>
+                      }`}>
                       {event.status}
                     </span>
                   </div>
