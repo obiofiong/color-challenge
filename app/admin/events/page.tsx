@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from '@/src/lib/supabase-server'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
+import AdminEventsList from './AdminEventsList'
 
 export default async function AdminEventsPage() {
   const supabase = await createSupabaseServerClient()
@@ -8,12 +9,6 @@ export default async function AdminEventsPage() {
     .from('events')
     .select('*, contestants(count)')
     .order('created_at', { ascending: false })
-
-  const statusColors: Record<string, string> = {
-    draft: 'bg-gray-500/20 text-gray-300',
-    active: 'bg-green-500/20 text-green-400',
-    completed: 'bg-blue-500/20 text-blue-400',
-  }
 
   return (
     <div>
@@ -39,27 +34,7 @@ export default async function AdminEventsPage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-3">
-          {events.map((event: any) => (
-            <Link
-              key={event.id}
-              href={`/admin/events/${event.id}`}
-              className="block bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold">{event.title}</h2>
-                  <p className="text-sm text-gray-400 mt-1">
-                    /{event.slug} &middot; {event.contestants?.[0]?.count ?? 0} contestants
-                  </p>
-                </div>
-                <span className={`text-xs px-3 py-1 rounded-full font-medium ${statusColors[event.status] ?? statusColors.draft}`}>
-                  {event.status}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <AdminEventsList events={events} />
       )}
     </div>
   )
