@@ -47,8 +47,9 @@ app/
   admin/
     layout.tsx                    # Session gate + AdminNav shell
     AdminNav.tsx                  # Desktop sidebar + mobile drawer (client)
-    page.tsx                      # Dashboard (stat tiles)
-    events/page.tsx               # Event list
+    page.tsx                      # Dashboard (stat tiles + first-run onboarding checklist)
+    events/page.tsx               # Event list (server, fetches + delegates to AdminEventsList)
+    events/AdminEventsList.tsx    # Search/filter + list rendering (client)
     events/new/page.tsx           # Create event
     events/[id]/
       page.tsx                   # Edit event + contestant list + Danger Zone + "View live page"
@@ -57,7 +58,8 @@ app/
       DeleteContestantButton.tsx  # Trigger + ConfirmDialog (client)
       contestants/new/page.tsx    # Add contestant (image upload/URL, ColorSwatchPicker)
       contestants/[contestantId]/page.tsx  # Edit contestant (client-fetched data, ColorSwatchPicker)
-    applications/page.tsx         # All applications, approve/reject
+    applications/page.tsx         # All applications (server, fetches + delegates to AdminApplicationsList)
+    applications/AdminApplicationsList.tsx # Search/filter (name/email, status, event) + list rendering (client)
     applications/ApplicationActions.tsx    # Approve/reject buttons (client)
   actions/                        # 'use server' Server Functions — see §5
     auth.ts
@@ -159,8 +161,9 @@ All files start with `'use server'`. Convention: functions used by `useActionSta
 | `contestants.ts` | `createContestant` | ✅ | Inserts `contestants` row, bulk-inserts `contestant_images` from `image_urls[]` form field, revalidates event detail page |
 | | `updateContestant` | ✅ | Updates `contestants` row, revalidates event + contestant detail |
 | | `deleteContestant` | ✅ | Looks up `contestant_images`, extracts storage paths via regex on `image_url`, calls `storage.remove()`, deletes `contestant_images` rows, then the `contestants` row |
-| | `addContestantImage` | ✅ | Inserts one `contestant_images` row, revalidates contestant detail page |
+| | `addContestantImage` | ✅ | Inserts one `contestant_images` row, **returns `{ id }`** (the real inserted row id — the client uses this instead of a throwaway UUID so the image can be immediately reordered/removed without a page reload), revalidates contestant detail page |
 | | `removeContestantImage` | ✅ | Deletes the storage object (if the URL matches the storage path pattern) + the `contestant_images` row |
+| | `reorderContestantImage` | ✅ | Fetches all of a contestant's images ordered by `sort_order`, finds the target and its `up`/`down` neighbor, swaps their `sort_order` values (two updates) |
 | `applications.ts` | `submitApplication` | ❌ (public) | Resolves `event_id` from a `slug` form field server-side, inserts `event_applications`, maps unique-violation (`23505`) to a friendly "already applied" message |
 | | `checkApplicationStatus` | ❌ (public) | Read-only: resolves `event_id` from `slug`, looks up `event_applications` by `event_id` + `email` (`maybeSingle()`), returns `{ status, submittedAt }` or an error if not found. Powers `/events/[slug]/apply/status` |
 | | `updateApplicationStatus` | ✅ | Updates `event_applications.status` + `reviewed_at`/`reviewed_by`; **on `approved`, also inserts a new `contestants` row** linked via `application_id` (this is the only place a contestant is created outside the admin "Add Contestant" form) |

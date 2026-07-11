@@ -206,14 +206,14 @@ Content area is a single unconstrained `<main>` — no breadcrumbs, no page-leve
 ### 4.12 Admin: Dashboard (`/admin`)
 
 **File:** `app/admin/page.tsx`
-4 stat tiles in a responsive grid (Events, Contestants, Total Votes, Pending Applications), each clickable → relevant list page. That's the entire page — no recent-activity feed, no charts, no quick-create shortcuts.
+4 stat tiles in a responsive grid (Events, Contestants, Total Votes, Pending Applications), each clickable → relevant list page. When `eventCount === 0` (V4), a "Getting started" checklist card renders above the stats — a 4-step guide (create an event → add contestants → set it active → share the link), with step 1 linking to `/admin/events/new`. Beyond that, still no recent-activity feed, no charts.
 
 ---
 
 ### 4.13 Admin: Events List (`/admin/events`)
 
-**File:** `app/admin/events/page.tsx`
-Header + "Create Event" button. List (not grid) of event rows: title, `/slug`, contestant count, status badge. Empty state card with "Create your first event" link. Whole row is a link to the event's edit page — no per-row quick actions (no inline delete/duplicate/preview from this list).
+**Files:** `app/admin/events/page.tsx` (server) + `AdminEventsList.tsx` (client, V4)
+Header + "Create Event" button. Below that, a search box (title/slug) + status filter (V4 — client-side over the server-fetched list, no extra round trip per keystroke), then the list (not grid) of event rows: title, `/slug`, contestant count, status badge. Two distinct empty states: "No events yet" (zero events at all) vs. "No events match your filters" (V4, filters active with no matches). Whole row is a link to the event's edit page — no per-row quick actions (no inline delete/duplicate/preview from this list).
 
 ---
 
@@ -253,12 +253,14 @@ Fields: name\*, colour, tagline, description, bio, then an image section support
 **File:** `.../contestants/[contestantId]/page.tsx`
 Same field set as create, now including the same `ColorSwatchPicker` as the create page (V3 — previously this page had plain text inputs with no live preview and no color-name-driven autofill, inconsistent with create; that inconsistency is resolved). Remaining differences from create: (a) fetches its own data **client-side** in a `useEffect` (only page in the admin area that does this — every other admin page fetches server-side before render, so this one alone shows a "Loading contestant..." flash), (b) image add/remove calls server actions directly per-image (no batch save — each upload/remove is its own network round trip and revalidation).
 
+**Image reordering (V4):** each thumbnail now has hover-reveal up/down chevrons (in addition to the existing remove X) that call a new `reorderContestantImage` action, swapping `sort_order` with the adjacent image. Previously `sort_order` existed in the schema with no UI to change it after initial upload order.
+
 ---
 
 ### 4.18 Admin: Applications (`/admin/applications`)
 
-**File:** `app/admin/applications/page.tsx` + `ApplicationActions.tsx`
-Flat list of **all** applications across **all events** (no per-event filter, no tabs, no search) — status badge, contact info line, event name, bio excerpt, portfolio link. Pending applications get inline Approve/Reject buttons (`useTransition`); already-actioned applications show status only, no way to see reviewed_by/reviewed_at, no undo.
+**Files:** `app/admin/applications/page.tsx` (server) + `AdminApplicationsList.tsx` (client, V4) + `ApplicationActions.tsx`
+List of **all** applications across **all events**, now with a search box (name/email), a status filter, and an event filter (V4 — all client-side over the server-fetched list) — previously this was an entirely unfiltered flat feed. Each row: status badge, contact info line, event name, bio excerpt, portfolio link. Pending applications get inline Approve/Reject buttons (`useTransition`); already-actioned applications show status only, no way to see reviewed_by/reviewed_at, no undo. Two empty states: "No applications yet" vs. "No applications match your filters" (V4).
 
 ---
 
@@ -303,10 +305,9 @@ Flat list of **all** applications across **all events** (no per-event filter, no
 
 ## 7. Notable Gaps / Absent Screens
 
-- No **search/filter** anywhere (event list, applications list, admin events list are all unpaginated flat lists).
 - No **admin user management** (single implicit admin identity via Supabase Auth user; no roles/invite flow).
-- No **contestant reordering** or **drag-and-drop image ordering** in admin (sort_order exists in the schema but there's no UI to change it after initial upload order).
-- No **onboarding/empty-state guidance** in the admin dashboard beyond "no X yet" text (e.g., no first-run checklist for "create an event → add contestants → go live").
+- No **contestant reordering** (only image reordering within a contestant, added in V4) — still no way to reorder the contestants themselves within an event.
+- No **pagination** — the admin events/applications lists gained search/filter in V4, but still render every matching row client-side with no page size limit; a very large dataset would still be a long unstyled list.
 
 ---
 
@@ -320,12 +321,21 @@ For an AI/design review consuming this document, the highest-leverage structural
 4. Should voter identity move beyond `localStorage` (e.g., magic-link/email-based) given it directly gates the core "one vote per event" business rule?
 5. ~~Should the "Apply to Compete" flow include applicant-facing status visibility?~~ **Done in V3** (`/events/[slug]/apply/status`). Remaining: should event creation support cloning/importing contestants to reduce the fully-serial admin journey in §5C?
 6. Should toasts and inline banners be unified into one feedback pattern?
+7. ~~Should the admin events/applications lists have search/filter?~~ **Done in V4**, client-side over the full fetched dataset. At what row count does this stop scaling, and should it move to server-side pagination/filtering instead?
+8. Now that contestant *images* can be reordered (V4), should contestants themselves be reorderable within an event (e.g. for display order on the public page)?
 
 ---
 
 ## 9. Changelog
 
-### V3 (this pass)
+### V4 (this pass)
+
+- Added search/filter (name/email, status, event) to the admin applications list, extracted into a client `AdminApplicationsList` component.
+- Added search/filter (title/slug, status) to the admin events list, extracted into a client `AdminEventsList` component.
+- Added contestant image reordering (up/down) in the edit-contestant page via a new `reorderContestantImage` action. Also fixed `addContestantImage` to return the inserted row's real id instead of the client standing in a throwaway UUID, which previously made a just-uploaded image un-reorderable until a page reload.
+- Added a "Getting started" onboarding checklist to the admin dashboard, shown only when there are zero events.
+
+### V3
 
 - Replaced raw Tailwind gradient/text-color text inputs with `ColorSwatchPicker`, a visual swatch picker built from the curated palette in `color-utils.ts`, on both the add- and edit-contestant forms (with a "Custom" fallback for colors outside the palette).
 - Extracted a shared `ConfirmDialog` component and refactored `DeleteContestantButton`/`DeleteEventButton` to use it instead of each hand-coding the same modal.
@@ -334,17 +344,17 @@ For an AI/design review consuming this document, the highest-leverage structural
 
 ### V2
 
-- Fixed vote counts showing zero (stale `contestant_id` references + a bad `.order('created_at', ...)` on a table without that column).
-- Replaced the native `confirm()` on contestant delete with a proper modal.
-- Redesigned the 404 page.
-- Redesigned the homepage (hero, stat row, richer event cards, empty states).
-- Added Unsplash support to the image remote patterns for event cover images.
-
-### V2 (this pass)
-
 - Wired up `deleteEvent` to a new `DeleteEventButton` (Danger Zone section on the edit-event page) — the action existed but had no UI.
 - Added mobile navigation for `/admin/*`: sticky top bar + slide-out drawer below `md`, sharing nav links/sign-out with the desktop sidebar.
 - Removed the extra client-side Supabase round trip in the apply form — `event_id` is now resolved server-side from a hidden `slug` field inside `submitApplication`.
 - Removed the dead, permanently-hidden `success-msg` block from `EventEditForm.tsx`.
 - Added an explicit empty state ("No contestants yet") to the public event page instead of a silent blank gap.
 - Added a persistent "You voted for X" banner + pre-seeded "Voted" card state via a new `getMyVote` action and `EventVotingSection` wrapper, so returning voters no longer need to re-click Vote to discover they already have.
+
+### V1
+
+- Fixed vote counts showing zero (stale `contestant_id` references + a bad `.order('created_at', ...)` on a table without that column).
+- Replaced the native `confirm()` on contestant delete with a proper modal.
+- Redesigned the 404 page.
+- Redesigned the homepage (hero, stat row, richer event cards, empty states).
+- Added Unsplash support to the image remote patterns for event cover images.
