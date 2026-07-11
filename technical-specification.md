@@ -43,6 +43,7 @@ app/
     page.tsx                      # Event detail + generateMetadata
     leaderboard/page.tsx          # Event-scoped leaderboard + generateMetadata
     apply/page.tsx                # Application form
+    apply/status/page.tsx         # Applicant-facing status lookup
   admin/
     layout.tsx                    # Session gate + AdminNav shell
     AdminNav.tsx                  # Desktop sidebar + mobile drawer (client)
@@ -50,12 +51,12 @@ app/
     events/page.tsx               # Event list
     events/new/page.tsx           # Create event
     events/[id]/
-      page.tsx                   # Edit event + contestant list + Danger Zone
+      page.tsx                   # Edit event + contestant list + Danger Zone + "View live page"
       EventEditForm.tsx           # Client form (useActionState)
-      DeleteEventButton.tsx       # Confirm-modal delete (client)
-      DeleteContestantButton.tsx  # Confirm-modal delete (client)
-      contestants/new/page.tsx    # Add contestant (image upload/URL, gradient picker)
-      contestants/[contestantId]/page.tsx  # Edit contestant (client-fetched data)
+      DeleteEventButton.tsx       # Trigger + ConfirmDialog (client)
+      DeleteContestantButton.tsx  # Trigger + ConfirmDialog (client)
+      contestants/new/page.tsx    # Add contestant (image upload/URL, ColorSwatchPicker)
+      contestants/[contestantId]/page.tsx  # Edit contestant (client-fetched data, ColorSwatchPicker)
     applications/page.tsx         # All applications, approve/reject
     applications/ApplicationActions.tsx    # Approve/reject buttons (client)
   actions/                        # 'use server' Server Functions — see §5
@@ -69,13 +70,15 @@ src/
     supabase-server.ts            # createServerClient — server components & Server Functions
     supabase-browser.ts           # createBrowserClient — client components
     supabase.ts                   # Legacy re-export (== supabase-browser), kept for back-compat
-    color-utils.ts                # getDefaultStyles(), getLeaderboardStyle() — color-name → Tailwind class lookup
+    color-utils.ts                # getDefaultStyles(), getLeaderboardStyle(), COLOR_PALETTE — color-name → Tailwind class lookup
     user.ts                       # getUserId() — anonymous voter identity (localStorage)
     helper.ts                     # capitalize()
   components/
     ContestantCard.tsx            # Vote button, lightbox/zoom viewer (client)
     EventVotingSection.tsx        # Wraps grid: already-voted banner + empty state (client)
     EventRegistrationModal.tsx    # "Join future events" modal (client)
+    ConfirmDialog.tsx             # Shared destructive-action confirm modal (client)
+    ColorSwatchPicker.tsx         # Curated-palette color picker w/ "Custom" raw-class fallback (client)
     countdown.tsx                 # Live countdown to voting_ends_at (client)
 public/images/entries/            # Legacy static contestant images (pre-multi-event; still referenced by seeded Colour Challenge data)
 ```
@@ -94,7 +97,7 @@ Source of truth: the **live Supabase schema**, captured in [database.md](./datab
 ⚠️ `type` is **NOT NULL** at the DB level (not shown as nullable in `database.md`) even though the create-event form treats it as optional — always pass a non-null value when inserting programmatically (see §8).
 
 **`contestants`**
-`id` (uuid, PK) · `name` · `bio` · `color` (free text, e.g. `"red"`) · `tagline` · `description` · `options` (`_text` — legacy array column, superseded by `contestant_images`, still read as a fallback) · `event_id` (uuid, FK → `events.id`) · `application_id` (uuid, FK → `event_applications.id`, nullable — set when a contestant originates from an approved application) · `gradient` (text — literal Tailwind gradient utility classes, e.g. `"from-red-700 to-rose-500"`) · `text_color` (text — literal Tailwind class, e.g. `"text-white"`).
+`id` (uuid, PK) · `name` · `bio` · `color` (free text, e.g. `"red"`) · `tagline` · `description` · `options` (`_text` — legacy array column, superseded by `contestant_images`, still read as a fallback) · `event_id` (uuid, FK → `events.id`) · `application_id` (uuid, FK → `event_applications.id`, nullable — set when a contestant originates from an approved application) · `gradient` (text — literal Tailwind gradient utility classes, e.g. `"from-red-700 to-rose-500"`) · `text_color` (text — literal Tailwind class, e.g. `"text-white"`). Both are still raw class strings at the DB level; `ColorSwatchPicker` (client) is a UI-layer convenience over `color-utils.ts`'s curated palette that writes these same columns — it does not change the schema or add a separate "curated vs custom" flag.
 
 ⚠️ **No `created_at` column.** A query ordering by `contestants.created_at` will throw Postgres error `42703` — this exact bug caused contestants to silently disappear from the admin UI earlier in this project's history (the error was swallowed and the page rendered its "no contestants" empty state instead of surfacing the failure). Order by `id` or another real column if ordering is needed.
 
@@ -133,7 +136,7 @@ Three independent layers, each of which must be maintained if admin routes or mu
 
 1. **`proxy.ts` (request-level).** Refreshes the Supabase session cookie on every matched request and redirects unauthenticated requests to `/admin/*` (excluding `/login`) to `/login`. Matcher excludes `_next/static`, `_next/image`, `favicon.ico`, and common image extensions.
 2. **`app/admin/layout.tsx` (render-level).** Calls `getSession()` (wraps `supabase.auth.getUser()`) and `redirect('/login')` server-side if there's no user. This is what actually prevents the admin UI from rendering — the proxy-level redirect is a defense-in-depth/perf optimization, not the sole gate.
-3. **Every Server Function in `app/actions/*.ts` that mutates data independently calls `getSession()`** and returns/throws `Unauthorized` if there's no user. This is deliberate and non-negotiable: Server Functions are directly callable HTTP endpoints regardless of which page rendered the trigger, so layout-level protection alone does not secure them. `submitApplication` and `castVote` are the two intentional exceptions — they're public-write-by-design (an applicant/voter is never authenticated).
+3. **Every Server Function in `app/actions/*.ts` that mutates data independently calls `getSession()`** and returns/throws `Unauthorized` if there's no user. This is deliberate and non-negotiable: Server Functions are directly callable HTTP endpoints regardless of which page rendered the trigger, so layout-level protection alone does not secure them. `submitApplication`, `checkApplicationStatus`, `getMyVote`, and `castVote` are the intentional exceptions — they're public-by-design (an applicant/voter is never authenticated), covering both public writes and the public reads that support them (status lookup, already-voted lookup).
 
 **Auth provider:** Supabase Auth, email/password only (`supabase.auth.signInWithPassword`). No signup flow exists in the app — admin users must be created directly in the Supabase dashboard (Authentication → Users). No roles/permissions system; any authenticated Supabase user is treated as a full admin.
 
@@ -159,6 +162,7 @@ All files start with `'use server'`. Convention: functions used by `useActionSta
 | | `addContestantImage` | ✅ | Inserts one `contestant_images` row, revalidates contestant detail page |
 | | `removeContestantImage` | ✅ | Deletes the storage object (if the URL matches the storage path pattern) + the `contestant_images` row |
 | `applications.ts` | `submitApplication` | ❌ (public) | Resolves `event_id` from a `slug` form field server-side, inserts `event_applications`, maps unique-violation (`23505`) to a friendly "already applied" message |
+| | `checkApplicationStatus` | ❌ (public) | Read-only: resolves `event_id` from `slug`, looks up `event_applications` by `event_id` + `email` (`maybeSingle()`), returns `{ status, submittedAt }` or an error if not found. Powers `/events/[slug]/apply/status` |
 | | `updateApplicationStatus` | ✅ | Updates `event_applications.status` + `reviewed_at`/`reviewed_by`; **on `approved`, also inserts a new `contestants` row** linked via `application_id` (this is the only place a contestant is created outside the admin "Add Contestant" form) |
 | `votes.ts` | `getMyVote` | ❌ (public) | Read-only lookup: given `eventId` + the anonymous `userId`, returns the voted `contestant_id` or `null`. Powers the persistent "already voted" banner |
 | | `castVote` | ❌ (public) | Application-level duplicate check (`event_id` + `user_id`) before insert (backed by the DB's `unique_vote_per_event` constraint as a second line of defense), captures `x-forwarded-for` and `user-agent` from `headers()`, inserts a **denormalized** vote row (name/color snapshotted, not joined later) |
