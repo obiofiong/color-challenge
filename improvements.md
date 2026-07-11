@@ -22,6 +22,6 @@ V3
 Sourced from ui-specification.md §7-8 (remaining Notable Gaps / Suggested Focus Areas after V2).
 
 - [x] Gradient/text-color content model requires admins to hand-type raw Tailwind class names with no visual picker
-- [ ] `DeleteContestantButton` and `DeleteEventButton` are two independently-coded copies of the same confirm-modal structure
+- [x] `DeleteContestantButton` and `DeleteEventButton` are two independently-coded copies of the same confirm-modal structure
 - [ ] No "View live page" link from the admin edit-event screen back to the public event
 - [ ] No applicant-facing way to check application status after submitting
