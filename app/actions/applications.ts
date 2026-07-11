@@ -127,12 +127,15 @@ export async function updateApplicationStatus(
       .single()
 
     if (app) {
-      await supabase.from('contestants').insert({
+      const { error: contestantError } = await supabase.from('contestants').insert({
         event_id: eventId,
         application_id: applicationId,
         name: app.full_name,
         bio: app.bio,
+        color: '',
       })
+
+      if (contestantError) throw new Error(contestantError.message)
     }
   }
 
