@@ -2,8 +2,8 @@
 
 import { useActionState, useState } from 'react'
 import { createContestant } from '@/app/actions/contestants'
-import { getDefaultStyles } from '@/src/lib/color-utils'
 import { createSupabaseBrowserClient } from '@/src/lib/supabase-browser'
+import ColorSwatchPicker from '@/src/components/ColorSwatchPicker'
 import { ArrowLeft, Upload, Link2, X, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { use } from 'react'
@@ -21,13 +21,6 @@ export default function NewContestantPage({
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
   const [urlInput, setUrlInput] = useState('')
-
-  const handleColorChange = (value: string) => {
-    setColor(value)
-    const defaults = getDefaultStyles(value)
-    setGradient(defaults.gradient)
-    setTextColor(defaults.textColor)
-  }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -87,32 +80,35 @@ export default function NewContestantPage({
 
       <form action={formAction} className="space-y-5">
         <input type="hidden" name="event_id" value={eventId} />
+        <input type="hidden" name="color" value={color} />
         <input type="hidden" name="gradient" value={gradient} />
         <input type="hidden" name="text_color" value={textColor} />
         {imageUrls.map((url) => (
           <input key={url} type="hidden" name="image_urls" value={url} />
         ))}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <label className="text-sm text-gray-400 mb-2 block">Name *</label>
-            <input
-              name="name"
-              required
-              placeholder="Contestant name"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 transition"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-gray-400 mb-2 block">Colour</label>
-            <input
-              name="color"
-              value={color}
-              onChange={(e) => handleColorChange(e.target.value)}
-              placeholder="red, blue, green..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 transition"
-            />
-          </div>
+        <div>
+          <label className="text-sm text-gray-400 mb-2 block">Name *</label>
+          <input
+            name="name"
+            required
+            placeholder="Contestant name"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 transition"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm text-gray-400 mb-2 block">Colour</label>
+          <ColorSwatchPicker
+            color={color}
+            gradient={gradient}
+            textColor={textColor}
+            onChange={(next) => {
+              setColor(next.color)
+              setGradient(next.gradient)
+              setTextColor(next.textColor)
+            }}
+          />
         </div>
 
         <div>
@@ -154,29 +150,6 @@ export default function NewContestantPage({
             </div>
           </div>
         )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <label className="text-sm text-gray-400 mb-2 block">Gradient Classes</label>
-            <input
-              value={gradient}
-              onChange={(e) => setGradient(e.target.value)}
-              placeholder="from-red-700 to-rose-500"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 transition"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-gray-400 mb-2 block">Text Colour Class</label>
-            <select
-              value={textColor}
-              onChange={(e) => setTextColor(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 transition"
-            >
-              <option value="text-white">White text</option>
-              <option value="text-black">Black text</option>
-            </select>
-          </div>
-        </div>
 
         {/* Images */}
         <div>

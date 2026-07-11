@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition, use } from 'react'
 import { updateContestant, addContestantImage, removeContestantImage } from '@/app/actions/contestants'
 import { createSupabaseBrowserClient } from '@/src/lib/supabase-browser'
+import ColorSwatchPicker from '@/src/components/ColorSwatchPicker'
 import { ArrowLeft, Upload, Link2, X, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect } from 'react'
@@ -20,6 +21,9 @@ export default function EditContestantPage({
   const [urlInput, setUrlInput] = useState('')
   const [removePending, startRemoveTransition] = useTransition()
   const [loading, setLoading] = useState(true)
+  const [color, setColor] = useState('')
+  const [gradient, setGradient] = useState('')
+  const [textColor, setTextColor] = useState('text-white')
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient()
@@ -33,6 +37,9 @@ export default function EditContestantPage({
 
       if (c) {
         setContestant(c)
+        setColor(c.color ?? '')
+        setGradient(c.gradient ?? '')
+        setTextColor(c.text_color ?? 'text-white')
         setImages(
           (c.contestant_images ?? []).sort(
             (a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
@@ -127,25 +134,32 @@ export default function EditContestantPage({
       <form action={formAction} className="space-y-5">
         <input type="hidden" name="id" value={contestantId} />
         <input type="hidden" name="event_id" value={eventId} />
+        <input type="hidden" name="color" value={color} />
+        <input type="hidden" name="gradient" value={gradient} />
+        <input type="hidden" name="text_color" value={textColor} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <label className="text-sm text-gray-400 mb-2 block">Name</label>
-            <input
-              name="name"
-              required
-              defaultValue={contestant.name}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 transition"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-gray-400 mb-2 block">Colour</label>
-            <input
-              name="color"
-              defaultValue={contestant.color ?? ''}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 transition"
-            />
-          </div>
+        <div>
+          <label className="text-sm text-gray-400 mb-2 block">Name</label>
+          <input
+            name="name"
+            required
+            defaultValue={contestant.name}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 transition"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm text-gray-400 mb-2 block">Colour</label>
+          <ColorSwatchPicker
+            color={color}
+            gradient={gradient}
+            textColor={textColor}
+            onChange={(next) => {
+              setColor(next.color)
+              setGradient(next.gradient)
+              setTextColor(next.textColor)
+            }}
+          />
         </div>
 
         <div>
@@ -175,27 +189,6 @@ export default function EditContestantPage({
             defaultValue={contestant.bio ?? ''}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 transition resize-none"
           />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <label className="text-sm text-gray-400 mb-2 block">Gradient Classes</label>
-            <input
-              name="gradient"
-              defaultValue={contestant.gradient ?? ''}
-              placeholder="from-red-700 to-rose-500"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 transition"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-gray-400 mb-2 block">Text Colour Class</label>
-            <input
-              name="text_color"
-              defaultValue={contestant.text_color ?? 'text-white'}
-              placeholder="text-white or text-black"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-white/30 transition"
-            />
-          </div>
         </div>
 
         <button

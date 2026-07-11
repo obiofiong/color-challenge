@@ -18,6 +18,11 @@ export function getDefaultStyles(colorName: string) {
   return COLOR_STYLES[colorName.toLowerCase()] ?? DEFAULT_STYLE
 }
 
+export const COLOR_PALETTE = Object.entries(COLOR_STYLES).map(([name, style]) => ({
+  name,
+  ...style,
+}))
+
 export function getLeaderboardStyle(colorName: string): string {
   const styles: Record<string, string> = {
     black: 'bg-zinc-900 shadow-zinc-700',
