@@ -53,6 +53,51 @@ export async function submitApplication(
   return { error: null, success: true }
 }
 
+type ApplicationStatusState = {
+  error: string | null
+  result: { status: string; submittedAt: string } | null
+}
+
+export async function checkApplicationStatus(
+  _prevState: ApplicationStatusState,
+  formData: FormData
+): Promise<ApplicationStatusState> {
+  const slug = formData.get('slug') as string
+  const email = formData.get('email') as string
+
+  if (!email || !slug) {
+    return { error: 'Email is required', result: null }
+  }
+
+  const supabase = await createSupabaseServerClient()
+
+  const { data: event } = await supabase
+    .from('events')
+    .select('id')
+    .eq('slug', slug)
+    .single()
+
+  if (!event) {
+    return { error: 'Event not found', result: null }
+  }
+
+  const { data: application } = await supabase
+    .from('event_applications')
+    .select('status, created_at')
+    .eq('event_id', event.id)
+    .eq('email', email)
+    .maybeSingle()
+
+  if (!application) {
+    return { error: 'No application found for that email on this event', result: null }
+  }
+
+  return {
+    error: null,
+    result: { status: application.status, submittedAt: application.created_at },
+  }
+}
+
 export async function updateApplicationStatus(
   applicationId: string,
   status: 'approved' | 'rejected',

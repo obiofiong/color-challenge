@@ -25,12 +25,20 @@ export default function ApplyPage({
           <p className="text-gray-400 mb-6">
             Your application is under review. We will notify you once it has been processed.
           </p>
-          <Link
-            href={`/events/${slug}`}
-            className="text-white underline hover:text-gray-300"
-          >
-            Back to event
-          </Link>
+          <div className="flex flex-col items-center gap-2">
+            <Link
+              href={`/events/${slug}/apply/status`}
+              className="text-white underline hover:text-gray-300"
+            >
+              Check application status
+            </Link>
+            <Link
+              href={`/events/${slug}`}
+              className="text-gray-400 hover:text-white text-sm"
+            >
+              Back to event
+            </Link>
+          </div>
         </div>
       </main>
     )
@@ -47,10 +55,20 @@ export default function ApplyPage({
           Back to event
         </Link>
 
-        <h1 className="text-3xl font-bold mb-2">Apply to Compete</h1>
-        <p className="text-gray-400 mb-8 text-sm">
-          Submit your application to participate in this event. Applications are reviewed by the organizers.
-        </p>
+        <div className="flex items-start justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Apply to Compete</h1>
+            <p className="text-gray-400 text-sm">
+              Submit your application to participate in this event. Applications are reviewed by the organizers.
+            </p>
+          </div>
+          <Link
+            href={`/events/${slug}/apply/status`}
+            className="text-gray-400 hover:text-white text-xs underline whitespace-nowrap mt-1"
+          >
+            Already applied?
+          </Link>
+        </div>
 
         {state.error && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-4 py-3 mb-6">
