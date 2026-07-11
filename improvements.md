@@ -33,4 +33,4 @@ Sourced from ui-specification.md §7 (remaining Notable Gaps after V3).
 - [x] No search/filter on the admin applications list (flat list across all events, all statuses)
 - [x] No search/filter on the admin events list
 - [x] No contestant image reordering in admin (sort_order exists but there's no UI to change it after upload)
-- [ ] No onboarding guidance on the admin dashboard for a brand-new install with zero events
+- [x] No onboarding guidance on the admin dashboard for a brand-new install with zero events
