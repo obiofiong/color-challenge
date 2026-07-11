@@ -16,3 +16,12 @@ Sourced from ui-specification.md §6-8 (Known Issues / Notable Gaps / Suggested 
 - [x] Dead unused `success-msg` div in `EventEditForm.tsx`
 - [x] Public event page has no empty state when an event has zero contestants (silent blank gap)
 - [x] No persistent "already voted" indicator — voters only learn they've voted via a failed-revote error, not on page load
+
+V3
+
+Sourced from ui-specification.md §7-8 (remaining Notable Gaps / Suggested Focus Areas after V2).
+
+- [ ] Gradient/text-color content model requires admins to hand-type raw Tailwind class names with no visual picker
+- [ ] `DeleteContestantButton` and `DeleteEventButton` are two independently-coded copies of the same confirm-modal structure
+- [ ] No "View live page" link from the admin edit-event screen back to the public event
+- [ ] No applicant-facing way to check application status after submitting
