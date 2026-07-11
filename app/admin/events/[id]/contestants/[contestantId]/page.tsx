@@ -1,10 +1,10 @@
 'use client'
 
 import { useActionState, useState, useTransition, use } from 'react'
-import { updateContestant, addContestantImage, removeContestantImage } from '@/app/actions/contestants'
+import { updateContestant, addContestantImage, removeContestantImage, reorderContestantImage } from '@/app/actions/contestants'
 import { createSupabaseBrowserClient } from '@/src/lib/supabase-browser'
 import ColorSwatchPicker from '@/src/components/ColorSwatchPicker'
-import { ArrowLeft, Upload, Link2, X, Trash2 } from 'lucide-react'
+import { ArrowLeft, Upload, Link2, X, ChevronUp, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect } from 'react'
 
@@ -72,10 +72,10 @@ export default function EditContestantPage({
           .from('contestant-images')
           .getPublicUrl(path)
 
-        await addContestantImage(contestantId, eventId, data.publicUrl, images.length)
+        const inserted = await addContestantImage(contestantId, eventId, data.publicUrl, images.length)
         setImages((prev) => [
           ...prev,
-          { id: crypto.randomUUID(), image_url: data.publicUrl, sort_order: prev.length },
+          { id: inserted.id, image_url: data.publicUrl, sort_order: prev.length },
         ])
       }
     }
@@ -86,10 +86,10 @@ export default function EditContestantPage({
 
   const addUrl = async () => {
     if (!urlInput.trim()) return
-    await addContestantImage(contestantId, eventId, urlInput.trim(), images.length)
+    const inserted = await addContestantImage(contestantId, eventId, urlInput.trim(), images.length)
     setImages((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), image_url: urlInput.trim(), sort_order: prev.length },
+      { id: inserted.id, image_url: urlInput.trim(), sort_order: prev.length },
     ])
     setUrlInput('')
   }
@@ -98,6 +98,21 @@ export default function EditContestantPage({
     startRemoveTransition(async () => {
       await removeContestantImage(img.id, img.image_url, eventId, contestantId)
       setImages((prev) => prev.filter((i) => i.id !== img.id))
+    })
+  }
+
+  const handleReorder = (img: any, direction: 'up' | 'down') => {
+    const index = images.findIndex((i) => i.id === img.id)
+    const swapIndex = direction === 'up' ? index - 1 : index + 1
+    if (swapIndex < 0 || swapIndex >= images.length) return
+
+    startRemoveTransition(async () => {
+      await reorderContestantImage(eventId, contestantId, img.id, direction)
+      setImages((prev) => {
+        const next = [...prev]
+        ;[next[index], next[swapIndex]] = [next[swapIndex], next[index]]
+        return next
+      })
     })
   }
 
@@ -243,7 +258,7 @@ export default function EditContestantPage({
 
         {images.length > 0 ? (
           <div className="grid grid-cols-3 gap-3">
-            {images.map((img: any) => (
+            {images.map((img: any, i: number) => (
               <div key={img.id} className="relative group">
                 <img
                   src={img.image_url}
@@ -258,6 +273,24 @@ export default function EditContestantPage({
                 >
                   <X size={14} />
                 </button>
+                <div className="absolute bottom-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                  <button
+                    type="button"
+                    onClick={() => handleReorder(img, 'up')}
+                    disabled={removePending || i === 0}
+                    className="bg-black/70 text-white p-1 rounded-full disabled:opacity-30"
+                  >
+                    <ChevronUp size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleReorder(img, 'down')}
+                    disabled={removePending || i === images.length - 1}
+                    className="bg-black/70 text-white p-1 rounded-full disabled:opacity-30"
+                  >
+                    <ChevronDown size={14} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

@@ -134,13 +134,46 @@ export async function addContestantImage(
   if (!user) throw new Error('Unauthorized')
 
   const supabase = await createSupabaseServerClient()
-  const { error } = await supabase.from('contestant_images').insert({
+  const { data, error } = await supabase.from('contestant_images').insert({
     contestant_id: contestantId,
     image_url: imageUrl,
     sort_order: sortOrder,
-  })
+  }).select('id').single()
 
   if (error) throw new Error(error.message)
+  revalidatePath(`/admin/events/${eventId}/contestants/${contestantId}`)
+  return { id: data.id }
+}
+
+export async function reorderContestantImage(
+  eventId: string,
+  contestantId: string,
+  imageId: string,
+  direction: 'up' | 'down'
+) {
+  const user = await getSession()
+  if (!user) throw new Error('Unauthorized')
+
+  const supabase = await createSupabaseServerClient()
+
+  const { data: images } = await supabase
+    .from('contestant_images')
+    .select('id, sort_order')
+    .eq('contestant_id', contestantId)
+    .order('sort_order', { ascending: true })
+
+  if (!images) return
+
+  const index = images.findIndex((img) => img.id === imageId)
+  const swapIndex = direction === 'up' ? index - 1 : index + 1
+  if (index === -1 || swapIndex < 0 || swapIndex >= images.length) return
+
+  const current = images[index]
+  const swapWith = images[swapIndex]
+
+  await supabase.from('contestant_images').update({ sort_order: swapWith.sort_order }).eq('id', current.id)
+  await supabase.from('contestant_images').update({ sort_order: current.sort_order }).eq('id', swapWith.id)
+
   revalidatePath(`/admin/events/${eventId}/contestants/${contestantId}`)
 }
 
