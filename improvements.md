@@ -34,3 +34,7 @@ Sourced from ui-specification.md §7 (remaining Notable Gaps after V3).
 - [x] No search/filter on the admin events list
 - [x] No contestant image reordering in admin (sort_order exists but there's no UI to change it after upload)
 - [x] No onboarding guidance on the admin dashboard for a brand-new install with zero events
+
+Bugfixes (reported, not part of a planned V-series)
+
+- [x] Approving an application didn't add the applicant as a contestant — `updateApplicationStatus` inserted a `contestants` row with only `name`/`bio`, omitting the NOT NULL `color` column, and never checked the insert error. Fixed with a `color: ''` default + error check; manually backfilled the one application that had already been approved under the broken code.
